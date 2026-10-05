@@ -76,19 +76,19 @@ TARGET_USERIMAGES_USE_F2FS := true
 TARGET_USES_MKE2FS := true
 BOARD_USERDATAIMAGE_FILE_SYSTEM_TYPE := f2fs
 
+# 12.1 only knows: system vendor product system_ext odm vendor_dlkm odm_dlkm (no system_dlkm).
 # Dynamic partitions. [device: blockdev --getsize64 /dev/block/by-name/super = 12934782976]
 # Only used by the build system, not by the recovery at runtime.
 BOARD_SUPER_PARTITION_SIZE := 12934782976
 BOARD_SUPER_PARTITION_GROUPS := main
 BOARD_MAIN_SIZE := 12930588672
-BOARD_MAIN_PARTITION_LIST := system system_ext vendor product odm vendor_dlkm odm_dlkm system_dlkm
+BOARD_MAIN_PARTITION_LIST := system system_ext vendor product odm vendor_dlkm odm_dlkm
 TARGET_COPY_OUT_VENDOR := vendor
 TARGET_COPY_OUT_PRODUCT := product
 TARGET_COPY_OUT_SYSTEM_EXT := system_ext
 TARGET_COPY_OUT_ODM := odm
 TARGET_COPY_OUT_VENDOR_DLKM := vendor_dlkm
 TARGET_COPY_OUT_ODM_DLKM := odm_dlkm
-TARGET_COPY_OUT_SYSTEM_DLKM := system_dlkm
 # build/make/core/board_config.mk (12.1) requires a filesystem type for every partition whose
 # TARGET_COPY_OUT_* is a root-level directory. Only the build system reads these values here;
 # the real filesystems are described in recovery.fstab (stock images are erofs).
@@ -99,7 +99,6 @@ BOARD_SYSTEM_EXTIMAGE_FILE_SYSTEM_TYPE := ext4
 BOARD_ODMIMAGE_FILE_SYSTEM_TYPE := ext4
 BOARD_VENDOR_DLKMIMAGE_FILE_SYSTEM_TYPE := ext4
 BOARD_ODM_DLKMIMAGE_FILE_SYSTEM_TYPE := ext4
-BOARD_SYSTEM_DLKMIMAGE_FILE_SYSTEM_TYPE := ext4
 
 # Recovery in vendor_boot (no recovery partition on this device)
 TARGET_NO_RECOVERY := true
