@@ -1,0 +1,22 @@
+#!/bin/bash
+# OrangeFox build variables for Infinix X6885 (fox_12.1 naming).
+export LC_ALL="C"
+export ALLOW_MISSING_DEPENDENCIES=true
+
+export OF_MAINTAINER="CHANGE_ME"
+
+export FOX_TARGET_DEVICES="X6885,Infinix-X6885"
+export TARGET_DEVICE_ALT="Infinix-X6885"
+
+export FOX_VIRTUAL_AB_DEVICE=1
+export FOX_AB_DEVICE=1
+export FOX_VENDOR_BOOT_RECOVERY=1
+
+export OF_SCREEN_H=2400
+export OF_HIDE_NOTCH=1
+export OF_ALLOW_DISABLE_NAVBAR=1
+export OF_USE_GREEN_LED=0
+export OF_NO_SPLASH_CHANGE=1
+
+export OF_DONT_PATCH_ENCRYPTED_DEVICE=1
+export OF_FIX_DECRYPTION_ON_DATA_MEDIA=1

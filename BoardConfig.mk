@@ -100,6 +100,8 @@ BOARD_ODMIMAGE_FILE_SYSTEM_TYPE := ext4
 BOARD_VENDOR_DLKMIMAGE_FILE_SYSTEM_TYPE := ext4
 BOARD_ODM_DLKMIMAGE_FILE_SYSTEM_TYPE := ext4
 
+AB_OTA_UPDATER := true
+
 # Recovery in vendor_boot (no recovery partition on this device)
 TARGET_NO_RECOVERY := true
 BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT := true
@@ -153,21 +155,4 @@ TW_OVERRIDE_SYSTEM_PROPS := \
 TARGET_OTA_ASSERT_DEVICE := X6885,Infinix-X6885
 TARGET_DEVICE_ALT := Infinix-X6885
 
-# ---------------------------------------------------------------- OrangeFox
-# Unknown variables are ignored by make, so both the OF_ and FOX_ spellings
-# are provided where the two manifest generations differ.
-OF_MAINTAINER := CHANGE_ME
-OF_TARGET_DEVICES := X6885,Infinix-X6885
-OF_SCREEN_H := 2400
-OF_HIDE_NOTCH := 1
-OF_ALLOW_DISABLE_NAVBAR := 1
-OF_USE_GREEN_LED := 0
-OF_NO_SPLASH_CHANGE := 1
-OF_USE_MAGISKBOOT := 1
-OF_USE_MAGISKBOOT_FOR_ALL_PATCHES := 1
-OF_DONT_PATCH_ENCRYPTED_DEVICE := 1
-OF_FIX_DECRYPTION_ON_DATA_MEDIA := 1
-OF_AB_DEVICE := 1
-FOX_AB_DEVICE := 1
-FOX_VIRTUAL_AB_DEVICE := 1
 TW_CUSTOM_CPU_TEMP_PATH := /sys/class/thermal/thermal_zone1/temp
