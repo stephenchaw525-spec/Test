@@ -13,31 +13,11 @@ Recovery-in-`vendor_boot` tree generated from the stock `vendor_boot.img`
 | Display | 1080x2400, density 420, `BGRA_8888` |
 | Encryption | FBE `aes-256-xts:aes-256-cts:v2+inlinecrypt_optimized` + metadata encryption |
 
-## Build with carlodandan/OrangeFox-Action-Builder
-
-Push the **contents of this folder** to the root of your own GitHub repo, then run
-the *OrangeFox - Build* workflow with:
-
-| Input | Value |
-|---|---|
-| MANIFEST_BRANCH | `12.1` (**not** 11.0: boot header v4 needs 12.1) |
-| DEVICE_TREE | URL of your repo |
-| DEVICE_TREE_BRANCH | your branch (e.g. `main`) |
-| DEVICE_PATH | `device/infinix/X6885` (must match `DEVICE_PATH` in BoardConfig.mk) |
-| DEVICE_NAME | `X6885` |
-| BUILD_TARGET | `vendorboot` |
-
-The builder runs `lunch twrp_X6885-eng && mka adbd vendorbootimage`.
-Output: `out/target/product/X6885/OrangeFox*.img`.
-
-Before the first build set `OF_MAINTAINER` in `vendorsetup.sh` (OrangeFox variables are exported there, using fox_12.1 names).
 
 ## Flash (read all of it first)
 
 **Do NOT patch/flash vbmeta with `--disable-verity --disable-verification` and do NOT flash the raw
-image produced by the build.** Another X6885 tree (sushtrshhh/twrp_x6885) reports that this Transsion
-firmware ("P7 anti-crack") answers unsigned full images / patched vbmeta with a red "Unauthorized Repair"
-screen and a deliberate soft-brick. This is a single-source report and not verified here, but the downside
+image produced by the build. Transsion firmware ("P7 anti-crack") answers unsigned full images / patched vbmeta with a red "Unauthorized Repair" screen and a deliberate soft-brick, but the downside
 is a soft-brick, so the safe path below only replaces the *recovery* ramdisk fragment of the STOCK image.
 
 The stock `vendor_boot` has two ramdisk fragments: *platform* (used for normal Android boot, ~29.7 MB) and
@@ -67,8 +47,8 @@ platform fragment), both stock first-stage fstabs, pixel format, screen size/den
 **Status:** the tree compiles on fox_12.1 (GitHub Actions run, vendorbootimage target). It has *not* been booted
 on a device. Open items:
 
-* **Touch** - the touch drivers are not in `vendor_boot` (they live in `vendor_dlkm`/`odm_dlkm`);
-  the tree ships them in the recovery fragment, but see "Troubleshooting": touch does not work yet. Find it in Android with
+* **Touch** - the DTB has a Goodix touch node but the driver is not in `vendor_boot`
+  (it is in `vendor_dlkm` or built in). Find it in Android with
   `ls /vendor_dlkm/lib/modules | grep -i -E "goodix|gt9|touch"`, copy the `.ko` (and its
   dependencies) into `recovery/root/lib/modules/` and append them to `modules.load.recovery`.
   Until then use volume keys / adb.
@@ -99,7 +79,8 @@ review them if decryption still fails (SELinux labels and missing libraries are 
 
 ### Status of the data collected from a real X6885 (round 1)
 
-* Applied: `TW_MAX_BRIGHTNESS=5119`, super size `12934782976`, CPU temp `thermal_zone1`, touch modules (see round 2 notes below for the corrected IC).
+* Applied: `TW_MAX_BRIGHTNESS=5119`, super size `12934782976`, CPU temp `thermal_zone1`, touch `gt9896s.ko` + `tui-common.ko`
+  (Goodix SPI; the driver Android has loaded; all its dependencies are already in vendor_boot, vermagic matches).
 * Touch caveat: the phone also loads `focaltech_ft3683g` and `chipsemi_chsc5xxx_old` (`ro.tran.tp_switch.support=1`,
   i.e. second-source touch panels). Which IC your unit uses is checked in round 2 (`logs/input_devices.txt`).
 * NOT applied yet: crypto blobs. The keymint/gatekeeper services only start after the **Trustonic** daemon (`mobicore`)
@@ -108,10 +89,7 @@ review them if decryption still fails (SELinux labels and missing libraries are 
 
 ### Round 2 results (applied)
 
-* Touch IC: **FocalTech FT3683G** (driver `focaltech_ft3683g`, on the Transsion `adaptive-ts` core). Evidence: the phone's own dmesg
-  shows `[FTS_TS/I]fts_input_report_b ... touch down` while touching the screen. An earlier version of this README said GT9896S;
-  that was wrong (the GT9896S driver is merely registered on the SPI bus, it is not the one bound to the panel).
-  The recovery fragment ships `opsMediator`/`adaptive-ts`/`focaltech_ft3683g` (+ `gt9896s`/`tui-common`, which Android loads too).
+* Touch IC confirmed: **GT9896S** (SPI `spi1.0`, driver `GT9896S`). Only `gt9896s.ko` + `tui-common.ko` are loaded in recovery.
 * Decryption stack is **Trustonic TEE**. Installed in `recovery/root`: `mcDriverDaemon`, `vendor.trustonic.tee-service`,
   keymint 3.0 + gatekeeper services, their vendor libraries, a minimal `/vendor/app/mcRegistry` (14 files, 0.8 MB: the drivers the
   daemon loads + keymint/gatekeeper/keybox trustlets) and `system/etc/init/trustonic_recovery.rc` (mount persist at
@@ -122,22 +100,6 @@ review them if decryption still fails (SELinux labels and missing libraries are 
   (libc/libc++/liblog/libbase/libcutils/libutils/libbinder(_ndk)/libhidlbase/libselinux/libcrypto are expected from the recovery build).
 * Not replicated: `mtk_storageproxyd` (RPMB proxy) and SELinux labels. Services use `seclabel u:r:recovery:s0` and
   run as root. If decryption fails, the first things to read are `logcat`/`dmesg | grep -i -E "mobicore|trustonic|keymint"` from the recovery.
-
-## Troubleshooting (first on-device test: boots to OrangeFox, no touch, no adb)
-
-Observed on a real X6885: the swapped image boots; normal Android boot works; recovery shows OrangeFox; touch and adb do
-NOT work; after a forced power-off every boot returned to recovery (the `boot-recovery` command stays in `misc`).
-
-Because there is no touch/adb in the recovery, the recovery now diagnoses itself (`init.recovery.mt6789.rc`):
-* `fox_clear_bcb.sh` clears only the 32-byte command field of `misc` if it says `boot-recovery` (so a power-off no longer loops).
-* `fox_debug.sh` writes `snap_1.txt` (after ~20 s) and `snap_2.txt` (after ~60 s) to `/mnt/vendor/persist/fox_debug/`:
-  cmdline, props, loaded modules, input devices, SPI/UDC/gadget state, processes, mounts, SELinux mode, filtered dmesg.
-
-To read them (rooted Android, after the recovery session): `su -c "cp -r /mnt/vendor/persist/fox_debug /sdcard/"`.
-Delete the folder afterwards. (The persist partition is mounted read-write by the recovery for the Trustonic stack anyway.)
-
-Notes: the earlier suspicion that Fox's `init.recovery.usb.rc` (legacy android_usb) breaks adb was checked and is NOT the cause:
-Fox's `init.rc` has a complete configfs path (gadget `g1`, `ffs.adb`, UDC bind) used when `sys.usb.configfs=1`.
 
 ## Refreshing from new firmware
 
