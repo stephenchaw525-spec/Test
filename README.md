@@ -30,29 +30,42 @@ the *OrangeFox - Build* workflow with:
 The builder runs `lunch twrp_X6885-eng && mka adbd vendorbootimage`.
 Output: `out/target/product/X6885/OrangeFox*.img`.
 
-Before the first build set `OF_MAINTAINER` in `BoardConfig.mk`.
+Before the first build set `OF_MAINTAINER` in `vendorsetup.sh` (OrangeFox variables are exported there, using fox_12.1 names).
 
 ## Flash (read all of it first)
 
-1. Bootloader must be unlocked. Keep the **stock** `vendor_boot.img` and `boot.img` safe.
-2. Disable AVB checks with your stock vbmeta:
-   `fastboot flash vbmeta vbmeta.img --disable-verity --disable-verification`
-3. `fastboot flash vendor_boot OrangeFox-...img`
-4. `fastboot reboot recovery`
+**Do NOT patch/flash vbmeta with `--disable-verity --disable-verification` and do NOT flash the raw
+image produced by the build.** Another X6885 tree (sushtrshhh/twrp_x6885) reports that this Transsion
+firmware ("P7 anti-crack") answers unsigned full images / patched vbmeta with a red "Unauthorized Repair"
+screen and a deliberate soft-brick. This is a single-source report and not verified here, but the downside
+is a soft-brick, so the safe path below only replaces the *recovery* ramdisk fragment of the STOCK image.
 
-Because this build is a single ramdisk (all of Fox, plus the stock modules and
-first-stage fstab), **normal Android boot also goes through it**. If Android does not
-boot, reflash the stock `vendor_boot.img` from fastboot.
+The stock `vendor_boot` has two ramdisk fragments: *platform* (used for normal Android boot, ~29.7 MB) and
+*recovery*. `tools/make_vendor_boot.py` keeps everything of the stock image (header, platform fragment, DTB,
+bootconfig, 64 MiB size, AVB footer + vbmeta blob) and swaps only the recovery fragment:
+
+```
+python3 tools/make_vendor_boot.py stock_vendor_boot.img ramdisk-recovery.img vendor_boot_fox.img
+fastboot flash vendor_boot vendor_boot_fox.img
+fastboot reboot recovery
+```
+`ramdisk-recovery.img` is the OrangeFox ramdisk from the build (`out/target/product/X6885/`). The tool also
+accepts the build's `vendor_boot.img` as input and uses its recovery fragment.
+It refuses ramdisks that do not look like a recovery or that do not fit (partition is 64 MiB; the recovery
+fragment can be at most about 37 MB).
+
+Always keep the stock `vendor_boot.img` and `boot.img`. If anything goes wrong, flash the stock `vendor_boot.img` back.
+The tool does not re-sign anything. Whether the bootloader accepts the swapped image is NOT verified.
 
 ## What is verified vs. not
 
 Verified from the stock image (see comments `[stock]` in BoardConfig.mk): boot header
 addresses/offsets, page size, vendor cmdline, bootconfig, partition size, DTB (byte-exact),
-all 234 kernel modules + `modules.load/.load.recovery/.dep/.alias/.softdep`, both stock
-first-stage fstabs, pixel format, screen size/density, encryption flags, USB init.
+kernel module lists (`modules.load.recovery`, `modules.dep`; the modules themselves stay in the stock
+platform fragment), both stock first-stage fstabs, pixel format, screen size/density, encryption flags, USB init.
 
-**Not verified:** this tree has *not* been compiled and has *not* been booted on a device.
-Expect to fix a variable or two on the first CI run. Open items:
+**Status:** the tree compiles on fox_12.1 (GitHub Actions run, vendorbootimage target). It has *not* been booted
+on a device. Open items:
 
 * **Touch** - the DTB has a Goodix touch node but the driver is not in `vendor_boot`
   (it is in `vendor_dlkm` or built in). Find it in Android with
@@ -113,9 +126,11 @@ review them if decryption still fails (SELinux labels and missing libraries are 
 ```
 python3 tools/unpack_vendor_boot.py vendor_boot.img out/
 cp out/dtb.img prebuilt/dtb.img
-cp out/ramdisk_0_platform/lib/modules/* recovery/root/lib/modules/
+# modules: the stock platform fragment already has them; the tree only ships modules.load.recovery,
+# modules.dep and the touch modules (gt9896s.ko, tui-common.ko). Re-check that every entry of the new
+# modules.load.recovery exists in out/ramdisk_0_platform/lib/modules or in recovery/root/lib/modules.
 cp out/ramdisk_0_platform/first_stage_ramdisk/fstab.mt6789 recovery/root/first_stage_ramdisk/
 cp out/ramdisk_1_recovery/first_stage_ramdisk/fstab.emmc  recovery/root/first_stage_ramdisk/
 ```
-Kernel modules must match the kernel in `boot` exactly (vermagic
+Kernel modules in the stock fragment must match the kernel in `boot` exactly (vermagic
 `6.12.38-android16-5-gcc51d883045d-4k`) - always refresh them together with `boot`.

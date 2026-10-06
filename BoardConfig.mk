@@ -100,17 +100,21 @@ BOARD_ODMIMAGE_FILE_SYSTEM_TYPE := ext4
 BOARD_VENDOR_DLKMIMAGE_FILE_SYSTEM_TYPE := ext4
 BOARD_ODM_DLKMIMAGE_FILE_SYSTEM_TYPE := ext4
 
+# A/B (OrangeFox checks for this in BoardConfig.mk)
 AB_OTA_UPDATER := true
 
 # Recovery in vendor_boot (no recovery partition on this device)
 TARGET_NO_RECOVERY := true
 BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT := true
+# Put the recovery ramdisk in its own 'recovery' fragment, like the stock vendor_boot does
+BOARD_INCLUDE_RECOVERY_RAMDISK_IN_VENDOR_BOOT := true
 TARGET_RECOVERY_FSTAB := $(DEVICE_PATH)/recovery.fstab
 TARGET_RECOVERY_PIXEL_FORMAT := BGRA_8888
 # ^ [stock: ro.minui.pixel_format=BGRA_8888]
 
-# Kernel modules: the stock ramdisk loads ~230 modules (display, UFS, USB, PMIC...)
-# from /lib/modules; they are shipped in recovery/root/lib/modules.
+# Kernel modules: the stock PLATFORM fragment already holds the ~230 modules (display, UFS, USB,
+# PMIC...). The recovery fragment only adds the touch driver (gt9896s + tui-common) and the
+# updated modules.load.recovery / modules.dep; the stock fragment is kept by tools/make_vendor_boot.py.
 TW_LOAD_VENDOR_BOOT_MODULES := true
 
 # Security patch / version: match the stock firmware so keymint accepts the
