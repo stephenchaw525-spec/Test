@@ -113,7 +113,7 @@ TARGET_RECOVERY_PIXEL_FORMAT := BGRA_8888
 # ^ [stock: ro.minui.pixel_format=BGRA_8888]
 
 # Kernel modules: the stock PLATFORM fragment already holds the ~230 modules (display, UFS, USB,
-# PMIC...). The recovery fragment only adds the touch driver (gt9896s + tui-common) and the
+# PMIC...). The recovery fragment only adds the touch drivers (focaltech_ft3683g/adaptive-ts, gt9896s) and the
 # updated modules.load.recovery / modules.dep; the stock fragment is kept by tools/make_vendor_boot.py.
 TW_LOAD_VENDOR_BOOT_MODULES := true
 
