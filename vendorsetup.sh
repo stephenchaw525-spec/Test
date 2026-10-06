@@ -7,7 +7,7 @@
 export LC_ALL="C"
 export ALLOW_MISSING_DEPENDENCIES=true
 
-export OF_MAINTAINER="CHANGE_ME"
+export OF_MAINTAINER="Made By 💝"
 
 # Device identity (ROM/OTA zips may assert either name)
 export FOX_TARGET_DEVICES="X6885,Infinix-X6885"
