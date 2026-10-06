@@ -230,3 +230,6 @@ mtk_irtx_pwm.ko
 tran_soft_restart.ko
 tui-common.ko
 gt9896s.ko
+opsMediator.ko
+adaptive-ts.ko
+focaltech_ft3683g.ko

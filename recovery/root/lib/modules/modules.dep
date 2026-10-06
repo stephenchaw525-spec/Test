@@ -234,3 +234,5 @@
 /lib/modules/tc_sgm41516d.ko: /lib/modules/tc_misc_intf.ko /lib/modules/tc_adapter_class.ko /lib/modules/tc_charger_class.ko /lib/modules/tc_algorithm_class.ko /lib/modules/tc_common_class.ko /lib/modules/bootprof.ko
 /lib/modules/tui-common.ko:
 /lib/modules/gt9896s.ko: /lib/modules/tui-common.ko
+/lib/modules/adaptive-ts.ko: /lib/modules/opsMediator.ko /lib/modules/thd.ko /lib/modules/mtk_disp_notify.ko /lib/modules/transsion_tranlog.ko
+/lib/modules/focaltech_ft3683g.ko: /lib/modules/adaptive-ts.ko /lib/modules/opsMediator.ko /lib/modules/thd.ko /lib/modules/mtk_disp_notify.ko /lib/modules/transsion_tranlog.ko
