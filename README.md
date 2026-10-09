@@ -35,9 +35,7 @@ Before the first build set `OF_MAINTAINER` in `vendorsetup.sh` (OrangeFox variab
 ## Flash (read all of it first)
 
 **Do NOT patch/flash vbmeta with `--disable-verity --disable-verification` and do NOT flash the raw
-image produced by the build.** Another X6885 tree (sushtrshhh/twrp_x6885) reports that this Transsion
-firmware ("P7 anti-crack") answers unsigned full images / patched vbmeta with a red "Unauthorized Repair"
-screen and a deliberate soft-brick. This is a single-source report and not verified here, but the downside
+image produced by the build.Transsion firmware ("P7 anti-crack") answers unsigned full images / patched vbmeta with a red "Unauthorized Repair" screen and a deliberate soft-brick. This is a single-source report and not verified here, but the downside
 is a soft-brick, so the safe path below only replaces the *recovery* ramdisk fragment of the STOCK image.
 
 The stock `vendor_boot` has two ramdisk fragments: *platform* (used for normal Android boot, ~29.7 MB) and
@@ -58,104 +56,3 @@ platform fragment are dropped and the fragment is re-compressed with lz4 -12 (sa
 screen and looped (normal boot was fine).
 
 Always keep the stock `vendor_boot.img` and `boot.img`. If anything goes wrong, flash the stock `vendor_boot.img` back.
-The tool does not re-sign anything. Whether the bootloader accepts the swapped image is NOT verified.
-
-## What is verified vs. not
-
-Verified from the stock image (see comments `[stock]` in BoardConfig.mk): boot header
-addresses/offsets, page size, vendor cmdline, bootconfig, partition size, DTB (byte-exact),
-kernel module lists (`modules.load.recovery`, `modules.dep`; the modules themselves stay in the stock
-platform fragment), both stock first-stage fstabs, pixel format, screen size/density, encryption flags, USB init.
-
-**Status:** the tree compiles on fox_12.1 (GitHub Actions run, vendorbootimage target). It has *not* been booted
-on a device. Open items:
-
-* **Touch** - the touch drivers are not in `vendor_boot` (they live in `vendor_dlkm`/`odm_dlkm`);
-  the tree ships them in the recovery fragment, but see "Troubleshooting": touch does not work yet. Find it in Android with
-  `ls /vendor_dlkm/lib/modules | grep -i -E "goodix|gt9|touch"`, copy the `.ko` (and its
-  dependencies) into `recovery/root/lib/modules/` and append them to `modules.load.recovery`.
-  Until then use volume keys / adb.
-* **Decryption of /data** - flags are set, but keymint/gatekeeper services and their
-  libraries from `/vendor` must be added; the stock Android 16 stack (AIDL keymint 7.0) is
-  much newer than the Android 12.1 recovery base, so this is the hardest item.
-* **A/B slot control** - stock uses an AIDL boot HAL; the 12.1 recovery talks HIDL. Slot
-  switching inside the recovery may not work.
-* `TW_MAX_BRIGHTNESS`, `BOARD_SUPER_PARTITION_SIZE` (placeholder, build-time only),
-  SD card node and OTG storage: please verify on the device.
-* Flashlight / vibrator / thermal paths are intentionally not set (not derivable from the image).
-
-## Finishing the open items (touch, decryption, brightness, super size)
-
-With the phone booted in Android (USB debugging on, root optional but recommended):
-
-```
-./tools/collect_device_info.sh                    # -> x6885_info.tar.gz
-python3 tools/apply_device_info.py x6885_info.tar.gz
-```
-The second step sets `TW_MAX_BRIGHTNESS`, the super size and CPU temp path, adds the touch
-modules (with dependencies, load order and `modules.dep`), and copies keymint/gatekeeper
-blobs into `recovery/root`. Commit, rebuild. Crypto blobs and rc files are copied as-is:
-review them if decryption still fails (SELinux labels and missing libraries are the usual cause).
-
-**No PC?** On a rooted phone run `su -c "sh /sdcard/Download/collect_on_device.sh"`
-(Termux or any root terminal). It writes `/sdcard/x6885_info.tar.gz`, same format as above.
-
-### Status of the data collected from a real X6885 (round 1)
-
-* Applied: `TW_MAX_BRIGHTNESS=5119`, super size `12934782976`, CPU temp `thermal_zone1`, touch modules (see round 2 notes below for the corrected IC).
-* Touch caveat: the phone also loads `focaltech_ft3683g` and `chipsemi_chsc5xxx_old` (`ro.tran.tp_switch.support=1`,
-  i.e. second-source touch panels). Which IC your unit uses is checked in round 2 (`logs/input_devices.txt`).
-* NOT applied yet: crypto blobs. The keymint/gatekeeper services only start after the **Trustonic** daemon (`mobicore`)
-  sets `ro.vendor.trustonic.ready`, so the daemon, `tee-service`, trustlets and their libraries are needed too:
-  run `tools/collect_round2.sh` (on-device, root) and send `x6885_round2.tar.gz`.
-
-### Round 2 results (applied)
-
-* Touch IC: **FocalTech FT3683G** (driver `focaltech_ft3683g`, on the Transsion `adaptive-ts` core). Evidence: the phone's own dmesg
-  shows `[FTS_TS/I]fts_input_report_b ... touch down` while touching the screen. An earlier version of this README said GT9896S;
-  that was wrong (the GT9896S driver is merely registered on the SPI bus, it is not the one bound to the panel).
-  The recovery fragment ships `opsMediator`/`adaptive-ts`/`focaltech_ft3683g` (+ `gt9896s`/`tui-common`, which Android loads too).
-* Decryption stack is **Trustonic TEE**. Installed in `recovery/root`: `mcDriverDaemon`, `vendor.trustonic.tee-service`,
-  keymint 3.0 + gatekeeper services, their vendor libraries, a minimal `/vendor/app/mcRegistry` (14 files, 0.8 MB: the drivers the
-  daemon loads + keymint/gatekeeper/keybox trustlets) and `system/etc/init/trustonic_recovery.rc` (mount persist at
-  `/mnt/vendor/persist`, start `mobicore`, then keymint/gatekeeper when `ro.vendor.trustonic.ready=true`).
-  The full 66 MB registry is deliberately NOT included (vendor_boot partition is 64 MiB).
-* Round 3 delivered the last 5 libraries (`android.hardware.common-V2-ndk`, `rkp-V1-ndk`, `secureclock-V1-ndk`,
-  `sharedsecret-V1-ndk`, `libtneclient`); `python3 tools/check_blobs.py` now reports every binary as resolved
-  (libc/libc++/liblog/libbase/libcutils/libutils/libbinder(_ndk)/libhidlbase/libselinux/libcrypto are expected from the recovery build).
-* Not replicated: `mtk_storageproxyd` (RPMB proxy) and SELinux labels. Services use `seclabel u:r:recovery:s0` and
-  run as root. If decryption fails, the first things to read are `logcat`/`dmesg | grep -i -E "mobicore|trustonic|keymint"` from the recovery.
-
-## Troubleshooting (on-device results so far)
-
-Real X6885, v5 image (stock vendor_boot with only the recovery fragment swapped): bootloader accepts it, normal Android
-boot works, OrangeFox shows on screen. NOT working: touch, adb. After a forced power-off inside the recovery every boot
-returned to recovery (the `boot-recovery` command stays in `misc`); flashing the stock vendor_boot back fixes that.
-
-**v6 soft-bricked** (no recovery and no Android). v6 = v5 + the two touch modules (this patch alone had been tested on
-v5 and booted) + two extra scripts/services that wrote to `misc` (clear BCB) and to `persist` (debug log).
-The cause is not proven, but the scripts were the only untested part, so **both were removed in v7**. Do not re-add
-anything that writes to `misc` or other partitions without testing it in isolation first.
-
-**Touch is not just kernel modules (THP).** `adaptive-ts.ko` / `focaltech_ft3683g.ko` implement Transsion "THP"
-(touch host processing): the kernel hands raw frames to a user-space daemon (`ini`, `hal`, `algo`, `fw` strings,
-`supplier-vendor-fwname-N`, netlink/misc device) and the daemon computes the touch points. On the phone the daemon is
-`vendor.hardware.trantp-service` (+ `vendor.transsion.hardware.tranthp-service`, `init.tp.rc`). Without them the modules load
-but no touch events can exist. `tools/collect_round4.sh` collects those files from a rooted phone.
-
-Not the cause of adb: Fox's `init.rc` already has a complete configfs gadget path (`g1`, `ffs.adb`, UDC bind) for
-`sys.usb.configfs=1`; the real reason adb is missing is still unknown.
-
-## Refreshing from new firmware
-
-```
-python3 tools/unpack_vendor_boot.py vendor_boot.img out/
-cp out/dtb.img prebuilt/dtb.img
-# modules: the stock platform fragment already has them; the tree only ships modules.load.recovery,
-# modules.dep and the touch modules (gt9896s.ko, tui-common.ko). Re-check that every entry of the new
-# modules.load.recovery exists in out/ramdisk_0_platform/lib/modules or in recovery/root/lib/modules.
-cp out/ramdisk_0_platform/first_stage_ramdisk/fstab.mt6789 recovery/root/first_stage_ramdisk/
-cp out/ramdisk_1_recovery/first_stage_ramdisk/fstab.emmc  recovery/root/first_stage_ramdisk/
-```
-Kernel modules in the stock fragment must match the kernel in `boot` exactly (vermagic
-`6.12.38-android16-5-gcc51d883045d-4k`) - always refresh them together with `boot`.
