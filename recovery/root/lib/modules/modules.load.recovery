@@ -233,3 +233,4 @@ gt9896s.ko
 opsMediator.ko
 adaptive-ts.ko
 focaltech_ft3683g.ko
+chipsemi_chsc5xxx_old.ko

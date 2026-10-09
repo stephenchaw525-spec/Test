@@ -236,3 +236,4 @@
 /lib/modules/gt9896s.ko: /lib/modules/tui-common.ko
 /lib/modules/adaptive-ts.ko: /lib/modules/opsMediator.ko /lib/modules/thd.ko /lib/modules/mtk_disp_notify.ko /lib/modules/transsion_tranlog.ko
 /lib/modules/focaltech_ft3683g.ko: /lib/modules/adaptive-ts.ko /lib/modules/opsMediator.ko /lib/modules/thd.ko /lib/modules/mtk_disp_notify.ko /lib/modules/transsion_tranlog.ko
+/odm_dlkm/lib/modules/chipsemi_chsc5xxx_old.ko: /odm_dlkm/lib/modules/adaptive-ts.ko

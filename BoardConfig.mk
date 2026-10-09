@@ -109,7 +109,7 @@ BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT := true
 # Put the recovery ramdisk in its own 'recovery' fragment, like the stock vendor_boot does
 BOARD_INCLUDE_RECOVERY_RAMDISK_IN_VENDOR_BOOT := true
 TARGET_RECOVERY_FSTAB := $(DEVICE_PATH)/recovery.fstab
-TARGET_RECOVERY_PIXEL_FORMAT := BGRA_8888
+TARGET_RECOVERY_PIXEL_FORMAT := RGBX_8888
 # ^ [stock: ro.minui.pixel_format=BGRA_8888]
 
 # Kernel modules: the stock PLATFORM fragment already holds the ~230 modules (display, UFS, USB,
@@ -119,11 +119,11 @@ TW_LOAD_VENDOR_BOOT_MODULES := true
 
 # Security patch / version: match the stock firmware so keymint accepts the
 # recovery for key unwrapping [stock: Android 16, patch 2026-08-01]
-PLATFORM_VERSION := 16
+PLATFORM_VERSION := 99.87.36
 PLATFORM_VERSION_LAST_STABLE := $(PLATFORM_VERSION)
-PLATFORM_SECURITY_PATCH := 2026-08-01
-VENDOR_SECURITY_PATCH := 2026-08-01
-BOOT_SECURITY_PATCH := 2026-08-01
+PLATFORM_SECURITY_PATCH := 2099-12-31
+VENDOR_SECURITY_PATCH := $(PLATFORM_SECURITY_PATCH)
+BOOT_SECURITY_PATCH := $(PLATFORM_SECURITY_PATCH)
 
 # Encryption [stock: fileencryption=aes-256-xts:aes-256-cts:v2+inlinecrypt_optimized,
 # keydirectory=/metadata/vold/metadata_encryption]
@@ -132,6 +132,7 @@ TW_INCLUDE_CRYPTO := true
 TW_INCLUDE_CRYPTO_FBE := true
 TW_INCLUDE_FBE_METADATA_DECRYPT := true
 TW_USE_FSCRYPT_POLICY := 2
+TW_FORCE_KEYMASTER_VER := true
 
 # TWRP / recovery core
 TW_THEME := portrait_hdpi
@@ -144,11 +145,17 @@ TW_MAX_BRIGHTNESS := 5119
 TW_DEFAULT_BRIGHTNESS := 2559
 # ^ [device: max_brightness=5119 read from /sys/class/leds/lcd-backlight]
 TW_EXTRA_LANGUAGES := true
+TW_FRAMERATE := 120
+TW_STATUS_ICONS_ALIGN := center
+TW_CUSTOM_CPU_POS := 300
+TW_CUSTOM_CLOCK_POS := 70
+TW_CUSTOM_BATTERY_POS := 790
 TW_USE_TOOLBOX := true
 TW_INCLUDE_FASTBOOTD := true
 TW_INCLUDE_REPACKTOOLS := true
 TW_INCLUDE_RESETPROP := true
 TW_INCLUDE_LPTOOLS := true
+TW_EXCLUDE_APEX := true
 TW_HAS_MTP := true
 TW_EXTERNAL_STORAGE_PATH := /external_sd
 TW_EXTERNAL_STORAGE_MOUNT_POINT := external_sd

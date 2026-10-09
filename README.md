@@ -52,7 +52,10 @@ fastboot reboot recovery
 `ramdisk-recovery.img` is the OrangeFox ramdisk from the build (`out/target/product/X6885/`). The tool also
 accepts the build's `vendor_boot.img` as input and uses its recovery fragment.
 It refuses ramdisks that do not look like a recovery or that do not fit (partition is 64 MiB; the recovery
-fragment can be at most about 37 MB).
+fragment can be at most about 37.2 MB). If the build's fragment is too big, files that are byte-identical to the stock
+platform fragment are dropped and the fragment is re-compressed with lz4 -12 (same format as the build).
+**Never use gzip for the recovery fragment**: a gzip fragment was tested on a real X6885 and the recovery showed a black
+screen and looped (normal boot was fine).
 
 Always keep the stock `vendor_boot.img` and `boot.img`. If anything goes wrong, flash the stock `vendor_boot.img` back.
 The tool does not re-sign anything. Whether the bootloader accepts the swapped image is NOT verified.
@@ -123,21 +126,25 @@ review them if decryption still fails (SELinux labels and missing libraries are 
 * Not replicated: `mtk_storageproxyd` (RPMB proxy) and SELinux labels. Services use `seclabel u:r:recovery:s0` and
   run as root. If decryption fails, the first things to read are `logcat`/`dmesg | grep -i -E "mobicore|trustonic|keymint"` from the recovery.
 
-## Troubleshooting (first on-device test: boots to OrangeFox, no touch, no adb)
+## Troubleshooting (on-device results so far)
 
-Observed on a real X6885: the swapped image boots; normal Android boot works; recovery shows OrangeFox; touch and adb do
-NOT work; after a forced power-off every boot returned to recovery (the `boot-recovery` command stays in `misc`).
+Real X6885, v5 image (stock vendor_boot with only the recovery fragment swapped): bootloader accepts it, normal Android
+boot works, OrangeFox shows on screen. NOT working: touch, adb. After a forced power-off inside the recovery every boot
+returned to recovery (the `boot-recovery` command stays in `misc`); flashing the stock vendor_boot back fixes that.
 
-Because there is no touch/adb in the recovery, the recovery now diagnoses itself (`init.recovery.mt6789.rc`):
-* `fox_clear_bcb.sh` clears only the 32-byte command field of `misc` if it says `boot-recovery` (so a power-off no longer loops).
-* `fox_debug.sh` writes `snap_1.txt` (after ~20 s) and `snap_2.txt` (after ~60 s) to `/mnt/vendor/persist/fox_debug/`:
-  cmdline, props, loaded modules, input devices, SPI/UDC/gadget state, processes, mounts, SELinux mode, filtered dmesg.
+**v6 soft-bricked** (no recovery and no Android). v6 = v5 + the two touch modules (this patch alone had been tested on
+v5 and booted) + two extra scripts/services that wrote to `misc` (clear BCB) and to `persist` (debug log).
+The cause is not proven, but the scripts were the only untested part, so **both were removed in v7**. Do not re-add
+anything that writes to `misc` or other partitions without testing it in isolation first.
 
-To read them (rooted Android, after the recovery session): `su -c "cp -r /mnt/vendor/persist/fox_debug /sdcard/"`.
-Delete the folder afterwards. (The persist partition is mounted read-write by the recovery for the Trustonic stack anyway.)
+**Touch is not just kernel modules (THP).** `adaptive-ts.ko` / `focaltech_ft3683g.ko` implement Transsion "THP"
+(touch host processing): the kernel hands raw frames to a user-space daemon (`ini`, `hal`, `algo`, `fw` strings,
+`supplier-vendor-fwname-N`, netlink/misc device) and the daemon computes the touch points. On the phone the daemon is
+`vendor.hardware.trantp-service` (+ `vendor.transsion.hardware.tranthp-service`, `init.tp.rc`). Without them the modules load
+but no touch events can exist. `tools/collect_round4.sh` collects those files from a rooted phone.
 
-Notes: the earlier suspicion that Fox's `init.recovery.usb.rc` (legacy android_usb) breaks adb was checked and is NOT the cause:
-Fox's `init.rc` has a complete configfs path (gadget `g1`, `ffs.adb`, UDC bind) used when `sys.usb.configfs=1`.
+Not the cause of adb: Fox's `init.rc` already has a complete configfs gadget path (`g1`, `ffs.adb`, UDC bind) for
+`sys.usb.configfs=1`; the real reason adb is missing is still unknown.
 
 ## Refreshing from new firmware
 
