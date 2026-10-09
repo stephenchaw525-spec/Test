@@ -28,3 +28,6 @@ export OF_NO_SPLASH_CHANGE=1
 # Encrypted /data (FBEv2 + metadata encryption)
 export OF_DONT_PATCH_ENCRYPTED_DEVICE=1
 export OF_FIX_DECRYPTION_ON_DATA_MEDIA=1
+
+# Keymaster (dibutuhkan karena TW_FORCE_KEYMASTER_VER := true)
+export OF_DEFAULT_KEYMASTER_VERSION=4.1
